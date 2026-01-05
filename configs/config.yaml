@@ -1,0 +1,9 @@
+experiment_name: driver_state_v1
+data_dir: ./dataset
+num_classes: 10
+batch_size: 64
+learning_rate: 0.001
+epochs: 20
+num_workers: 4
+device: cuda
+save_dir: ./checkpoints
