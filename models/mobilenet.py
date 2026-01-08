@@ -1,22 +1,24 @@
 import torch
 import torch.nn as nn
-from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+from torchvision.models.quantization import mobilenet_v3_large
+from torchvision.models import MobileNet_V3_Large_Weights
 
 class DriverMonitor(nn.Module):
     def __init__(self, num_classes, pretrained=True):
         super().__init__()
         
-        weights = MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
-        self.backbone = mobilenet_v3_small(weights=weights)
+        if pretrained:
+            weights = MobileNet_V3_Large_Weights.DEFAULT
+        else:
+            weights = None
+        # quantize=False gives us quantizable structure with FP32 weights
+        self.backbone = mobilenet_v3_large(weights=weights, quantize=False)
         
-        in_features = self.backbone.classifier[3].in_features
-        self.backbone.classifier[3] = nn.Linear(in_features, num_classes)
-        
-        self.quant = torch.quantization.QuantStub()
-        self.dequant = torch.quantization.DeQuantStub()
+        in_features = self.backbone.classifier[-1].in_features
+        self.backbone.classifier[-1] = nn.Linear(in_features, num_classes)
 
     def forward(self, x):
-        x = self.quant(x)
         x = self.backbone(x)
-        x = self.dequant(x)
         return x
+    def fuse_model(self):
+        self.backbone.fuse_model()

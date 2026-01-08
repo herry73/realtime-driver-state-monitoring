@@ -6,9 +6,11 @@ import torch.optim as optim
 from data.dataset import get_dataloaders
 from models.mobilenet import DriverMonitor
 
+
 def load_config(config_path):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
+
 
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
@@ -32,6 +34,7 @@ def train_epoch(model, loader, criterion, optimizer, device):
         
     return running_loss / len(loader), 100.0 * correct / total
 
+
 def validate(model, loader, criterion, device):
     model.eval()
     running_loss = 0.0
@@ -51,6 +54,7 @@ def validate(model, loader, criterion, device):
             
     return running_loss / len(loader), 100.0 * correct / total
 
+
 def main():
     cfg = load_config("configs/config.yaml")
     
@@ -59,7 +63,8 @@ def main():
     
     train_loader, val_loader = get_dataloaders(cfg)
     
-    model = DriverMonitor(num_classes=cfg['num_classes']).to(device)
+    # Create model with quantizable architecture
+    model = DriverMonitor(num_classes=cfg['num_classes'], pretrained=True).to(device)
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=cfg['learning_rate'])
@@ -67,12 +72,12 @@ def main():
     
     best_acc = 0.0
     
-    print(f"Starting training on {device}...")
+    print(f"Training")
+    print(f"Epochs: {cfg['epochs']}, Learning Rate: {cfg['learning_rate']}, Num Classes: {cfg['num_classes']}\n")
     
     for epoch in range(cfg['epochs']):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = validate(model, val_loader, criterion, device)
-        
         scheduler.step(val_acc)
         
         print(f"Epoch {epoch+1}/{cfg['epochs']} | "
@@ -83,7 +88,13 @@ def main():
             best_acc = val_acc
             save_path = os.path.join(cfg['save_dir'], "best_model_float32.pth")
             torch.save(model.state_dict(), save_path)
-            print(f"Saved best model with Acc: {best_acc:.2f}%")
+            print(f"Saved model with Acc: {best_acc:.2f}%")
+    
+    print(f"\n{'='*60}")
+    print(f"Trained, highest Validation Accuracy: {best_acc:.2f}%")
+    print(f"Model saved to: {os.path.join(cfg['save_dir'], 'best_model_float32.pth')}")
+    print(f"{'='*60}")
+
 
 if __name__ == "__main__":
     main()
