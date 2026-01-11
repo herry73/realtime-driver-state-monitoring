@@ -37,7 +37,7 @@ def main():
     quantized_save_path = "./checkpoints/model_quantized.pth"
     num_classes = 10 
     
-    backend = 'qnnpack'
+    backend = 'onednn'
     device = torch.device('cpu') 
     
     print(f"Configuring for backend: {backend}")
@@ -75,12 +75,16 @@ def main():
     
     print_size_of_model(model, "Int8 (Quantized)")
     
+    torch.jit.save(torch.jit.script(model), quantized_save_path.replace('.pth', '_scripted.pt'))
+    print(f"Scripted model saved to: {quantized_save_path.replace('.pth', '_scripted.pt')}")
+    # Also save the regular way as backup
     torch.save(model.state_dict(), quantized_save_path)
+
 
     # Validate
     from train import validate 
     criterion = nn.CrossEntropyLoss()
-    print("\nValidating Quantized Model Accuracy...")
+    print("\nValidating Quantized Model Accuracy")
     loss, acc = validate(model, val_loader, criterion, device)
     print(f"Quantized Accuracy: {acc:.2f}%")
 
